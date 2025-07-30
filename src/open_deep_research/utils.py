@@ -62,12 +62,28 @@ async def tavily_search(
     configurable = Configuration.from_runnable_config(config)
     max_char_to_include = 50_000   # NOTE: This can be tuned by the developer. This character count keeps us safely under input token limits for the latest models.
     model_api_key = get_api_key_for_model(configurable.summarization_model, config)
-    summarization_model = init_chat_model(
-        model=configurable.summarization_model,
-        max_tokens=configurable.summarization_model_max_tokens,
-        api_key=model_api_key,
-        tags=["langsmith:nostream"]
-    ).with_structured_output(Summary).with_retry(stop_after_attempt=configurable.max_structured_output_retries)
+    
+    # Handle Azure OpenAI configuration
+    if configurable.summarization_model.lower().startswith("azure_openai:"):
+        get_azure_openai_config(configurable.summarization_model, config)  # Set environment variables
+        # Extract the actual model name from azure_openai:model_name
+        actual_model = configurable.summarization_model.split(":", 1)[1] if ":" in configurable.summarization_model else "gpt-4"
+        summarization_model_config = {
+            "model": actual_model,
+            "model_provider": "azure_openai",
+            "max_tokens": configurable.summarization_model_max_tokens,
+            "api_key": model_api_key,
+            "tags": ["langsmith:nostream"]
+        }
+    else:
+        summarization_model_config = {
+            "model": configurable.summarization_model,
+            "max_tokens": configurable.summarization_model_max_tokens,
+            "api_key": model_api_key,
+            "tags": ["langsmith:nostream"]
+        }
+    
+    summarization_model = init_chat_model(**summarization_model_config).with_structured_output(Summary).with_retry(stop_after_attempt=configurable.max_structured_output_retries)
     async def noop():
         return None
     summarization_tasks = [
@@ -461,27 +477,44 @@ def get_config_value(value):
         return value.value
 
 def get_api_key_for_model(model_name: str, config: RunnableConfig):
-    should_get_from_config = os.getenv("GET_API_KEYS_FROM_CONFIG", "false")
     model_name = model_name.lower()
-    if should_get_from_config.lower() == "true":
-        api_keys = config.get("configurable", {}).get("apiKeys", {})
-        if not api_keys:
-            return None
-        if model_name.startswith("openai:"):
-            return api_keys.get("OPENAI_API_KEY")
-        elif model_name.startswith("anthropic:"):
-            return api_keys.get("ANTHROPIC_API_KEY")
-        elif model_name.startswith("google"):
-            return api_keys.get("GOOGLE_API_KEY")
-        return None
-    else:
-        if model_name.startswith("openai:"): 
-            return os.getenv("OPENAI_API_KEY")
-        elif model_name.startswith("anthropic:"):
-            return os.getenv("ANTHROPIC_API_KEY")
-        elif model_name.startswith("google"):
-            return os.getenv("GOOGLE_API_KEY")
-        return None
+    configurable = Configuration.from_runnable_config(config)
+    
+    if model_name.startswith("openai:"):
+        return os.getenv("OPENAI_API_KEY")
+    elif model_name.startswith("azure_openai:"):
+        # For Azure OpenAI, use the Azure-specific API key
+        return configurable.azure_openai_api_key or os.getenv("AZURE_OPENAI_API_KEY")
+    elif model_name.startswith("anthropic:"):
+        return os.getenv("ANTHROPIC_API_KEY")
+    elif model_name.startswith("google"):
+        return os.getenv("GOOGLE_API_KEY")
+    return None
+
+def get_azure_openai_config(model_name: str, config: RunnableConfig):
+    """Get Azure OpenAI specific configuration parameters"""
+    if not model_name.lower().startswith("azure_openai:"):
+        return {}
+    
+    # For Azure OpenAI, we need to set the environment variables
+    # before init_chat_model is called
+    configurable = Configuration.from_runnable_config(config)
+    
+    # Set environment variables if they're configured
+    # NOTE: LangChain's AzureChatOpenAI expects specific environment variable names
+    if configurable.azure_openai_endpoint:
+        os.environ["AZURE_OPENAI_ENDPOINT"] = configurable.azure_openai_endpoint
+        os.environ["AZURE_OPENAI_BASE"] = configurable.azure_openai_endpoint  # Some versions use this
+    if configurable.azure_openai_api_version:
+        os.environ["OPENAI_API_VERSION"] = configurable.azure_openai_api_version  # Note: OPENAI_API_VERSION, not AZURE_OPENAI_API_VERSION
+    if configurable.azure_openai_deployment:
+        os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"] = configurable.azure_openai_deployment
+    if configurable.azure_openai_api_key:
+        os.environ["AZURE_OPENAI_API_KEY"] = configurable.azure_openai_api_key
+        os.environ["OPENAI_API_KEY"] = configurable.azure_openai_api_key  # Also set as OPENAI_API_KEY for compatibility
+    
+    # Return empty dict since environment variables handle the config
+    return {}
 
 def get_tavily_api_key(config: RunnableConfig):
     should_get_from_config = os.getenv("GET_API_KEYS_FROM_CONFIG", "false")

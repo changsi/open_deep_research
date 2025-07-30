@@ -64,6 +64,44 @@ class Configuration(BaseModel):
             }
         }
     )
+    # Azure OpenAI Configuration
+    azure_openai_endpoint: Optional[str] = Field(
+        default=None,
+        metadata={
+            "x_oap_ui_config": {
+                "type": "text",
+                "description": "Azure OpenAI endpoint URL (e.g., https://your-resource.openai.azure.com/)"
+            }
+        }
+    )
+    azure_openai_api_version: str = Field(
+        default="2024-02-15-preview",
+        metadata={
+            "x_oap_ui_config": {
+                "type": "text",
+                "default": "2024-02-15-preview",
+                "description": "Azure OpenAI API version"
+            }
+        }
+    )
+    azure_openai_deployment: Optional[str] = Field(
+        default=None,
+        metadata={
+            "x_oap_ui_config": {
+                "type": "text",
+                "description": "Azure OpenAI deployment name for your models"
+            }
+        }
+    )
+    azure_openai_api_key: Optional[str] = Field(
+        default=None,
+        metadata={
+            "x_oap_ui_config": {
+                "type": "password",
+                "description": "Azure OpenAI API key"
+            }
+        }
+    )
     # Research Configuration
     search_api: SearchAPI = Field(
         default=SearchAPI.TAVILY,
@@ -109,11 +147,11 @@ class Configuration(BaseModel):
     )
     # Model Configuration
     summarization_model: str = Field(
-        default="openai:gpt-4.1-nano",
+        default="azure_openai:gpt-4.1",
         metadata={
             "x_oap_ui_config": {
                 "type": "text",
-                "default": "openai:gpt-4.1-nano",
+                "default": "azure_openai:gpt-4.1",
                 "description": "Model for summarizing research results from Tavily search results"
             }
         }
@@ -129,11 +167,11 @@ class Configuration(BaseModel):
         }
     )
     research_model: str = Field(
-        default="openai:gpt-4.1",
+        default="azure_openai:gpt-4.1",
         metadata={
             "x_oap_ui_config": {
                 "type": "text",
-                "default": "openai:gpt-4.1",
+                "default": "azure_openai:gpt-4.1",
                 "description": "Model for conducting research. NOTE: Make sure your Researcher Model supports the selected search API."
             }
         }
@@ -149,11 +187,11 @@ class Configuration(BaseModel):
         }
     )
     compression_model: str = Field(
-        default="openai:gpt-4.1-mini",
+        default="azure_openai:gpt-4.1",
         metadata={
             "x_oap_ui_config": {
                 "type": "text",
-                "default": "openai:gpt-4.1-mini",
+                "default": "azure_openai:gpt-4.1",
                 "description": "Model for compressing research findings from sub-agents. NOTE: Make sure your Compression Model supports the selected search API."
             }
         }
@@ -169,11 +207,11 @@ class Configuration(BaseModel):
         }
     )
     final_report_model: str = Field(
-        default="openai:gpt-4.1",
+        default="azure_openai:gpt-4.1",
         metadata={
             "x_oap_ui_config": {
                 "type": "text",
-                "default": "openai:gpt-4.1",
+                "default": "azure_openai:gpt-4.1",
                 "description": "Model for writing the final report from all research findings"
             }
         }

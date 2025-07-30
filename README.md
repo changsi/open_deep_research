@@ -11,7 +11,7 @@ Deep research has broken out as one of the most popular agent applications. This
 
 1. Clone the repository and activate a virtual environment:
 ```bash
-git clone https://github.com/langchain-ai/open_deep_research.git
+git clone https://github.com/changsi/open_deep_research.git
 cd open_deep_research
 uv venv
 source .venv/bin/activate  # On Windows: .venv\Scripts\activate
@@ -25,6 +25,18 @@ uv pip install -r pyproject.toml
 3. Set up your `.env` file to customize the environment variables (for model selection, search tools, and other configuration settings):
 ```bash
 cp .env.example .env
+```
+add those env variable.
+```
+# Azure OpenAI Configuration
+AZURE_OPENAI_API_KEY=<your Azure OpenAI API key>
+AZURE_OPENAI_ENDPOINT=<your Azure OpenAI endpoint>
+AZURE_OPENAI_DEPLOYMENT=gpt-4.1
+AZURE_OPENAI_API_VERSION=2025-01-01-preview
+```
+Set LANGSMITH_TRACING to false.
+```
+LANGSMITH_TRACING=false
 ```
 
 4. Launch the assistant with the LangGraph server locally to open LangGraph Studio in your browser:

@@ -21,6 +21,10 @@ source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 ```bash
 uv pip install -r pyproject.toml
 ```
+if uv is not found
+```bash
+pip install uv
+```
 
 3. Set up your `.env` file to customize the environment variables (for model selection, search tools, and other configuration settings):
 ```bash

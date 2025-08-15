@@ -1,33 +1,51 @@
 from langsmith import Client
-from tests.evaluators import eval_overall_quality, eval_relevance, eval_structure, eval_correctness, eval_groundedness, eval_completeness
+import os
+from tests.evaluators import (
+    eval_overall_quality,
+    eval_relevance,
+    eval_structure,
+    eval_correctness,
+    eval_groundedness,
+    eval_completeness,
+)
 from dotenv import load_dotenv
+from pathlib import Path
 import asyncio
 from open_deep_research.deep_researcher import deep_researcher_builder
 from langgraph.checkpoint.memory import MemorySaver
 import uuid
 
-load_dotenv("../.env")
+# Load the repo root .env reliably regardless of CWD
+load_dotenv(dotenv_path=Path(__file__).resolve().parents[1] / ".env")
 
 client = Client()
 
 # NOTE: Configure the right dataset and evaluators
-dataset_name = "Deep Research Bench"
-evaluators = []
+dataset_name = os.getenv("EVAL_DATASET", "Deep Research Bench")
+evaluators: list = [
+    eval_overall_quality,
+    eval_relevance,
+    eval_structure,
+    eval_correctness,
+    eval_groundedness,
+    eval_completeness,
+]
 # NOTE: Configure the right parameters for the experiment, these will be logged in the metadata
 max_structured_output_retries = 3
 allow_clarification = False
 max_concurrent_research_units = 10
-search_api = "tavily" # NOTE: We use Tavily to stay consistent
+search_api = os.getenv("SEARCH_API", "tavily")  # NOTE: We use Tavily to stay consistent
 max_researcher_iterations = 5
 max_react_tool_calls = 10
-summarization_model = "openai:gpt-4.1-nano"
-summarization_model_max_tokens = 8192
-research_model = "openai:gpt-4.1"
-research_model_max_tokens = 10000
-compression_model = "openai:gpt-4.1"
-compression_model_max_tokens = 10000
-final_report_model = "openai:gpt-4.1"
-final_report_model_max_tokens = 10000
+# Prefer Azure by default; override via env if you want other providers
+summarization_model = os.getenv("SUMMARIZATION_MODEL", "azure_openai:gpt-4.1")
+summarization_model_max_tokens = int(os.getenv("SUMMARIZATION_MODEL_MAX_TOKENS", 8192))
+research_model = os.getenv("RESEARCH_MODEL", "azure_openai:gpt-4.1")
+research_model_max_tokens = int(os.getenv("RESEARCH_MODEL_MAX_TOKENS", 10000))
+compression_model = os.getenv("COMPRESSION_MODEL", "azure_openai:gpt-4.1")
+compression_model_max_tokens = int(os.getenv("COMPRESSION_MODEL_MAX_TOKENS", 10000))
+final_report_model = os.getenv("FINAL_REPORT_MODEL", "azure_openai:gpt-4.1")
+final_report_model_max_tokens = int(os.getenv("FINAL_REPORT_MODEL_MAX_TOKENS", 10000))
 
 
 async def target(
@@ -66,7 +84,7 @@ async def main():
         target,
         data=dataset_name,
         evaluators=evaluators,
-        experiment_prefix=f"ODR GPT-4.1, Tavily Search #",
+        experiment_prefix=os.getenv("EVAL_EXPERIMENT_PREFIX", "ODR Azure, Tavily #"),
         max_concurrency=10,
         metadata={
             "max_structured_output_retries": max_structured_output_retries,

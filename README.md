@@ -144,7 +144,7 @@ A comprehensive batch evaluation system designed for detailed analysis and compa
 #### **Usage:**
 ```bash
 # Run comprehensive evaluation on LangSmith datasets
-python tests/run_evaluate.py
+PYTHONPATH=src python -m tests.run_evaluate
 ```
 #### **Key Files:**
 - `tests/run_evaluate.py`: Main evaluation script

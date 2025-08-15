@@ -1,13 +1,54 @@
+import os
 from typing import cast
 from pydantic import BaseModel, Field
-from langchain_openai import ChatOpenAI
 from langchain_anthropic import ChatAnthropic
-from open_deep_research.utils import get_today_str
-from tests.prompts import RELEVANCE_PROMPT, STRUCTURE_PROMPT, GROUNDEDNESS_PROMPT, OVERALL_QUALITY_PROMPT, CORRECTNESS_PROMPT, COMPLETENESS_PROMPT
-
-eval_model = ChatOpenAI(
-    model="gpt-4.1",
+from langchain.chat_models import init_chat_model
+from open_deep_research.utils import (
+    get_today_str,
+    get_azure_openai_config,
+    get_api_key_for_model,
 )
+from tests.prompts import (
+    RELEVANCE_PROMPT,
+    STRUCTURE_PROMPT,
+    GROUNDEDNESS_PROMPT,
+    OVERALL_QUALITY_PROMPT,
+    CORRECTNESS_PROMPT,
+    COMPLETENESS_PROMPT,
+)
+
+# Configure the evaluator model. For Azure, use prefix "azure_openai:" and set
+# AZURE_OPENAI_* env vars. Example: EVAL_MODEL=azure_openai:gpt-4.1
+EVAL_MODEL = os.getenv("EVAL_MODEL", "azure_openai:gpt-4.1")
+_config = {"configurable": {}}
+
+if EVAL_MODEL.lower().startswith("azure_openai:"):
+    # Ensure Azure env vars are set for LangChain's Azure client
+    get_azure_openai_config(EVAL_MODEL, _config)
+    _actual = EVAL_MODEL.split(":", 1)[1]
+    eval_model = init_chat_model(
+        configurable_fields=("model", "max_tokens", "api_key", "model_provider")
+    ).with_config(
+        {
+            "model": _actual,
+            "model_provider": "azure_openai",
+            "max_tokens": 2048,
+            "api_key": get_api_key_for_model(EVAL_MODEL, _config),
+            "tags": ["langsmith:nostream", "eval"],
+        }
+    )
+else:
+    # Fallback for non-Azure providers if you set EVAL_MODEL accordingly
+    eval_model = init_chat_model(
+        configurable_fields=("model", "max_tokens", "api_key")
+    ).with_config(
+        {
+            "model": EVAL_MODEL,
+            "max_tokens": 2048,
+            "api_key": get_api_key_for_model(EVAL_MODEL, _config),
+            "tags": ["langsmith:nostream", "eval"],
+        }
+    )
 
 def _format_input_query(inputs: dict) -> str:
     messages = inputs["messages"]
